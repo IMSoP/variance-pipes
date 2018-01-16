@@ -1,0 +1,189 @@
+==============
+ Substitution 
+==============
+
+Now that we can define the allowed inputs and possible outputs of different functions, we can start
+ thinking about which functions are interchangeable, and which aren't. 
+
+Let's say we have a chain like this, where GenericClass::bar is the method of some class in an OOP
+ language:
+ 
+           +                                                  +
+           |##################################################|
+           |######################  foo  #####################|
+           |##################################################|
+           +-----------------------+                          +
+                                   |                          |
+           +-----------------------+                          +
+           |##################################################|
+           |##############  GenericClass::bar  ###############|
+           |##################################################|
+           +-------+                         +----------------+
+                   |                         |
+           +-------+                         +----------------+
+           |##################################################|
+           |######################  baz  #####################|
+           |##################################################|
+           +                                                  +
+           
+We want to be able to substitute any subclass of GenericClass in its place, so we don't have to know
+in advance which subclass we're going to be working with. So, what can we substitute in place of
+ GenericClass::bar?
+
+           +                                                  +
+           |##################################################|
+           |######################  foo  #####################|
+           |##################################################|
+           +-----------------------+                          +
+                                   |                          |
+           ????????????????????????????????????????????????????
+                   |                         |
+           +-------+                         +----------------+
+           |##################################################|
+           |######################  baz  #####################|
+           |##################################################|
+           +                                                  +
+           
+============
+ Invariance 
+============
+
+The simplest case, which is always going to work, is another function which has the same "signature"
+(the same input restrictions and return guarantees):
+
+           +-----------------------+                          +
+           |##################################################|
+           |##############  BoringClass::bar  ################|
+           |##################################################|
+           +-------+                         +----------------+
+
+============
+ Covariance
+============
+
+The next thing that seems natural to try is a more specific class which has a more specific
+ signature. This is called "covariance" - the signature varies in the same direction as the
+ inheritance of the classes, from more general to more specific. 
+
+For instance, we might define:
+
+   class GenericClass {
+     method bar(postiveInteger $input) returns integerBetweenMinus100AndPlus50
+   }
+   class CovariantClass extends GenericClass {
+     method bar(postiveIntegerLessThan50 $input) returns integerBetweenMinus50AndPlus10
+   }
+
+           +-----------------------+                          +
+           |##################################################|
+           |##############  GenericClass::bar  ###############|
+           |##################################################|
+           +-------+                         +----------------+
+
+           +-----------------------+       +------------------+
+           |##################################################|
+           |############  CovariantClass::bar  ###############|
+           |##################################################|
+           +----------------+          +----------------------+
+
+Trying this will give us good news and bad news. First the good news, all of our outputs "fit" in
+ the input to the next function in the chain:
+
+           +-----------------------+       +------------------+
+           |##################################################|
+           |############  CovariantClass::bar  ###############|
+           |##################################################|
+           +----------------+          +----------------------+
+                            |v        v|
+                   |         v        v      |
+           +-------+         v        v      +----------------+
+           |##################################################|
+           |######################  baz  #####################|
+           |##################################################|
+           +                                                  +
+
+But now let's look at the other side of the chain:
+
+           +                                                  +
+           |##################################################|
+           |######################  foo  #####################|
+           |##################################################|
+           +-----------------------+                          +
+                                   |                 v        |
+                                   |       |         v
+           +-----------------------+       +---------X--------+
+           |##################################################|
+           |############  CovariantClass::bar  ###############|
+           |##################################################|
+           +----------------+          +----------------------+
+
+There's a whole bunch of values that foo can return which will be invalid input for our definition
+of CovariantClass::bar.
+
+So COVARIANCE OF RETURN VALUES IS VALID, BUT COVARIANCE OF INPUT IS INVALID.
+
+================
+ Contravariance
+================
+
+The other obvious thing to try is the opposite: make the restrictions on the subclass looser than the
+ones on the base class. This is called "contravariance" - the signature varies in the opposite 
+direction from the inheritance of the classes, from more specific to more general.
+
+For instance:
+
+   class GenericClass {
+     method bar(postiveInteger $input) returns integerBetweenMinus100AndPlus50
+   }
+   class ContravariantClass extends GenericClass {
+     method bar(integerHigherThanMinus100 $input) returns integerLowerThanPlus100
+   }
+
+           +-----------------------+                          +
+           |##################################################|
+           |##############  GenericClass::bar  ###############|
+           |##################################################|
+           +-------+                         +----------------+
+
+           +---+                                              +
+           |##################################################|
+           |##########  ContravariantClass::bar  #############|
+           |##################################################|
+           +                                              +---+
+
+First, the good news:
+
+           +                                                  +
+           |##################################################|
+           |######################  foo  #####################|
+           |##################################################|
+           +-----------------------+ |                      | +
+                                   | |                      | |
+               |                     |                      | |
+           +---+                     v                      v +
+           |##################################################|
+           |##########  ContravariantClass::bar  #############|
+           |##################################################|
+           +                                              +---+
+
+Unlike the covariant version, the input on our new class accepts all the possible outputs of foo.
+
+Now, the bad news:
+
+           +---+                                              +
+           |##################################################|
+           |##########  ContravariantClass::bar  #############|
+           |##################################################|
+           +   v                                  v       +---+
+           |   v                                  v       |
+               v   |                         |    v
+           +---X---+                         +----X-----------+
+           |##################################################|
+           |######################  baz  #####################|
+           |##################################################|
+           +                                                  +
+
+We now have the opposite problem: there are outputs from our new class which are invalid inputs to
+ the baz function we wanted to run next.
+
+So CONTRAVARIANCE OF INPUT IS VALID, BUT CONTRAVARIANCE OF RETURN VALUES IS INVALID.

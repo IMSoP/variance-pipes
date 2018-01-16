@@ -1,0 +1,174 @@
+=================
+ Basic Functions
+=================
+
+A function, procedure, or routine in pretty much any programming language can be described as a
+black box, taking some kind of input, and producing some kind of output. A program is then a series
+of these black boxes wired together, passing the output of one to the input of the next.
+
+Here's a completely unknown function:
+
+           +                                                  +
+           |##################################################|
+           |######################  ???  #####################|
+           |##################################################|
+           +                                                  +
+
+If we give it a particular input, we get a particular output:
+
+               |
+           +   v                                              +
+           |##################################################|
+           |######################  ???  #####################|
+           |##################################################|
+           +                 |                                +
+                             v
+
+A different input gives a different output:              
+                                               |
+           +                                   v              +
+           |##################################################|
+           |######################  ???  #####################|
+           |##################################################|
+           +   |                                              +           
+               v
+                
+Our range of inputs could represent a range of numbers in a one-byte signed int:
+
+          -128                      0         50            127 
+                                               |
+           +                                   v              +
+           |##################################################|
+           |######################  ???  #####################|
+           |##################################################|
+           +   |                                              +           
+               v
+
+Or perhaps we're using a hierarchy of classes to describe storage handlers:  
+
+           {----------- GenericStorageInterface --------------}
+           {---- BaseNoSQLClass ---}{----- BaseSQLClass ------}
+                                    {PostgreSQL}{MySQL}{Oracle}
+                                                  |
+           +                                      v           +
+           |##################################################|
+           |######################  ???  #####################|
+           |##################################################|
+           +   |                                              +           
+               v
+
+The key thing for this explanation is that more general types are "wider" than more specific or
+ restricted types.
+
+===================
+ Restricting Input
+=================== 
+
+The functions we've drawn so far can accept any value at all, represented by the different columns
+we can draw the data flowing down. But in reality, most functions can only handle some inputs, and
+others will be treated as errors or cause unwanted behaviour.
+
+For instance, we might want to reject negative inputs. We might write a declarataion like
+  function foo(positiveInt $input)
+In our diagram, we can represent that like this 
+
+          -128                       0                      127 
+                     
+           +-------------------------+                        +
+           |##################################################|
+           |######################  foo  #####################|
+           |##################################################|
+           +                                                  + 
+
+The open part of the box represents allowed values, which will give an output as before. But a value
+in the closed part will produce an error instead:
+
+          -128    -100                0                     127 
+                     |
+           +---------X---------------+                        +
+           |##################################################|
+           |######################  foo  #####################|
+           |##################################################|
+           +                                                  +           
+               
+The same diagram could represent a function which only accepts storage handlers descended from
+ BaseSQLClass, which will error if you give it a MongoDB handler instead:
+
+           {----------- GenericStorageInterface --------------}
+           {---- BaseNoSQLClass ---}{----- BaseSQLClass ------}
+                  {MongoDB}         {PostgreSQL}{MySQL}{Oracle}
+                     |
+           +---------X--------------+                         +
+           |##################################################|
+           |######################  foo  #####################|
+           |##################################################|
+           +                                                  +    
+
+====================
+ Restricting Output
+====================
+
+Functions aren't used one at a time, we glue them together, like this:
+
+                                          |       
+           +                              v                   +
+           |##################################################|
+           |######################  foo  #####################|
+           |##################################################|
+           +        |                                         +
+           |        |                                         |
+           |        |                                         |
+           +        v                                         +
+           |##################################################|
+           |######################  bar  #####################|
+           |##################################################|
+           +                                      |           +
+                                                  v
+
+The output of foo goes directly into bar. But what if bar has restrictions on its input? There are
+ values which can come out of foo which can't go into bar:
+
+                                          |       
+           +                              v                   +
+           |##################################################|
+           |######################  foo  #####################|
+           |##################################################|
+           +        |                                         +
+           |        |                                         |
+           |        v                                         |
+           +--------X--------------+                          +
+           |##################################################|
+           |######################  bar  #####################|
+           |##################################################|
+           +                                                  +
+                                                  
+The only way we can prevent this error is if we know what foo will return. So we define it with a
+ promise that it will only return restricted values:
+
+  function foo(anyValue $input) returns positiveInt
+                                                  
+           +                                                  +
+           |##################################################|
+           |######################  foo  #####################|
+           |##################################################|
+           +-----------------------+                          +
+         
+Now we can chain the two functions together safely; every value that foo can produce is allowed as 
+input to bar:
+  
+           +                                                  +
+           |##################################################|
+           |######################  foo  #####################|
+           |##################################################|
+           +-----------------------+ |                      | +
+                                   | |                      | |
+                                   | |                      | |
+           +-----------------------+ v                      v +
+           |##################################################|
+           |######################  bar  #####################|
+           |##################################################|
+           +                                                  +
+
+The key to understanding contracts, substitutability, covariance and contravariance is that it's
+ about making sure these pipes fit together safely - that is, without any possibility of illegal
+ inputs.
