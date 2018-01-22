@@ -11,7 +11,7 @@ Sections
 --------
 
 * [00 Basic Functions](00-basic-functions.txt)
-* [01 Basic Functions](01-substitution-and-inheritance.txt)
+* [01 Substitution and Inheritance](01-substitution-and-inheritance.txt)
 
 
 Copyright
